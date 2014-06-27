@@ -14,6 +14,10 @@ Handbook: http://make.wordpress.org/mobile/handbook/
 
 https://github.com/wordpress-mobile/WordPress-iOS/wiki/WordPress-for-iOS-Style-Guide
 
+### How to Contribute
+
+http://make.wordpress.org/mobile/handbook/pathways/ios/how-to-contribute/
+
 ## Folder Structure
 
 **Derived Sources** - This is where the project outputs the generated `WordPressComApiCredentials.m` file. As a part of the build process the project looks for a file located at `~/.wpcom_app_credentials` and uses the values there to generate `WordPressComApiCredentials.m`.
@@ -41,10 +45,6 @@ https://github.com/wordpress-mobile/WordPress-iOS/wiki/WordPress-for-iOS-Style-G
 **Other Sources** - There are a few files here dealing with localization of strings as well as the prefix for the project and `main.m`.
 
 **WordPressTest** - Where we put the unit tests and integration tests for the project.
-
-### How to Contribute
-
-http://make.wordpress.org/mobile/handbook/pathways/ios/how-to-contribute/
 
 ## Building
 
