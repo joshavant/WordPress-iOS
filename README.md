@@ -14,14 +14,6 @@ Handbook: http://make.wordpress.org/mobile/handbook/
 
 https://github.com/wordpress-mobile/WordPress-iOS/wiki/WordPress-for-iOS-Style-Guide
 
-### To report an issue
-
-https://github.com/wordpress-mobile/WordPress-iOS/issues
-
-### Source Code
-
-GitHub: https://github.com/wordpress-mobile/WordPress-iOS/
-
 ## Folder Structure
 
 **Derived Sources** - This is where the project outputs the generated `WordPressComApiCredentials.m` file. As a part of the build process the project looks for a file located at `~/.wpcom_app_credentials` and uses the values there to generate `WordPressComApiCredentials.m`.
