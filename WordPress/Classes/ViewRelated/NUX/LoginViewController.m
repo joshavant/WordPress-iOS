@@ -16,11 +16,11 @@
 #import "WPAccount.h"
 #import "Note.h"
 #import "ContextManager.h"
-#import "NoteService.h"
 #import "AccountService.h"
 #import "BlogService.h"
 #import "WPNUXHelpBadgeLabel.h"
 #import <Helpshift/Helpshift.h>
+
 
 static NSString *const ForgotPasswordDotComBaseUrl = @"https://wordpress.com";
 static NSString *const ForgotPasswordRelativeUrl = @"/wp-login.php?action=lostpassword&redirect_to=wordpress%3A%2F%2F";
@@ -52,6 +52,7 @@ static NSString *const GenerateApplicationSpecificPasswordUrl = @"http://en.supp
     NSString *_dotComSiteUrl;
     NSArray *_blogs;
     Blog *_blog;
+    NSUInteger _numberOfTimesLoginFailed;
 }
 
 @end
@@ -78,7 +79,7 @@ CGFloat const GeneralWalkthroughStatusBarOffset = 20.0;
     [super viewDidLoad];
     [self.navigationController setNavigationBarHidden:YES animated:NO];
     
-    self.view.backgroundColor = [WPNUXUtility backgroundColor];
+    self.view.backgroundColor = [WPStyleGuide wordPressBlue];
     _userIsDotCom = self.onlyDotComAllowed || !self.prefersSelfHosted;
     
     NSManagedObjectContext *context = [[ContextManager sharedInstance] mainContext];
@@ -261,6 +262,20 @@ CGFloat const GeneralWalkthroughStatusBarOffset = 20.0;
     overlayView.secondaryButtonCompletionBlock = ^(WPWalkthroughOverlayView *overlayView){
         [overlayView dismiss];
         [self showHelpViewController:NO];
+    };
+    overlayView.primaryButtonCompletionBlock = ^(WPWalkthroughOverlayView *overlayView){
+        [overlayView dismiss];
+    };
+    [self.view addSubview:overlayView];
+}
+
+- (void)displayGenericErrorMessageWithHelpshiftButton:(NSString *)message
+{
+    WPWalkthroughOverlayView *overlayView = [self baseLoginErrorOverlayView:message];
+    overlayView.secondaryButtonText = NSLocalizedString(@"Contact Us", @"The text on the button at the bottom of the error message when a user has repeated trouble logging in");
+    overlayView.secondaryButtonCompletionBlock = ^(WPWalkthroughOverlayView *overlayView){
+        [overlayView dismiss];
+        [self showHelpshiftConversationView];
     };
     overlayView.primaryButtonCompletionBlock = ^(WPWalkthroughOverlayView *overlayView){
         [overlayView dismiss];
@@ -658,6 +673,11 @@ CGFloat const GeneralWalkthroughStatusBarOffset = 20.0;
     [self.navigationController pushViewController:supportViewController animated:animated];
 }
 
+- (void)showHelpshiftConversationView
+{
+    [[Helpshift sharedInstance] showConversation:self withOptions:nil];
+}
+
 - (BOOL)isUrlWPCom:(NSString *)url
 {
     NSRegularExpression *protocol = [NSRegularExpression regularExpressionWithPattern:@"wordpress\\.com/?$" options:NSRegularExpressionCaseInsensitive error:nil];
@@ -870,9 +890,6 @@ CGFloat const GeneralWalkthroughStatusBarOffset = 20.0;
                                     [self setAuthenticating:NO withStatusMessage:nil];
                                     [self displayRemoteError:error];
                                 }];
-
-    NoteService *noteService = [[NoteService alloc] initWithManagedObjectContext:account.managedObjectContext];
-    [noteService fetchNewNotificationsWithSuccess:nil failure:nil];
 }
 
 - (void)createSelfHostedAccountAndBlogWithUsername:(NSString *)username password:(NSString *)password xmlrpc:(NSString *)xmlrpc options:(NSDictionary *)options
@@ -922,7 +939,7 @@ CGFloat const GeneralWalkthroughStatusBarOffset = 20.0;
         [self displayRemoteError:nil];
     } else if ([error.domain isEqual:WPXMLRPCErrorDomain] && error.code == WPXMLRPCInvalidInputError) {
         [self displayRemoteError:error];
-    } else if([error.domain isEqual:AFNetworkingErrorDomain]) {
+    } else if([error.domain isEqual:AFURLRequestSerializationErrorDomain] || [error.domain isEqual:AFURLResponseSerializationErrorDomain]) {
         NSString *str = [NSString stringWithFormat:NSLocalizedString(@"There was a server error communicating with your site:\n%@\nTap 'Need Help?' to view the FAQ.", nil), [error localizedDescription]];
         NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
                                   str, NSLocalizedDescriptionKey,
@@ -945,7 +962,15 @@ CGFloat const GeneralWalkthroughStatusBarOffset = 20.0;
         if ([message rangeOfString:@"application-specific"].location != NSNotFound) {
             [self displayGenerateApplicationSpecificPasswordErrorMessage:message];
         } else {
-            [self displayGenericErrorMessage:message];
+            if (error.code == WordPressComOAuthErrorInvalidRequest) {
+                _numberOfTimesLoginFailed++;
+            }
+            
+            if ([SupportViewController isHelpshiftEnabled] && _numberOfTimesLoginFailed >= 2) {
+                [self displayGenericErrorMessageWithHelpshiftButton:message];
+            } else {
+                [self displayGenericErrorMessage:message];
+            }
         }
         return;
     }

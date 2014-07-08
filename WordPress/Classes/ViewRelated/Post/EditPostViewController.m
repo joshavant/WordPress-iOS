@@ -489,9 +489,10 @@ NSString *const WPAbstractPostRestorationKey = @"WPAbstractPostRestorationKey";
     
     // Seems to be a bug with UIBarButtonItem respecting the UIControlStateDisabled text color
     NSDictionary *titleTextAttributes;
-    UIColor *color = updateEnabled ? [UIColor whiteColor] : [UIColor lightGrayColor];
+    UIColor *color = updateEnabled ? [UIColor whiteColor] : [UIColor colorWithWhite:1.0 alpha:0.5];
+    UIControlState controlState = updateEnabled ? UIControlStateNormal : UIControlStateDisabled;
     titleTextAttributes = @{NSFontAttributeName: [WPStyleGuide regularTextFont], NSForegroundColorAttributeName : color};
-    [self.navigationItem.rightBarButtonItem setTitleTextAttributes:titleTextAttributes forState:UIControlStateNormal];
+    [self.navigationItem.rightBarButtonItem setTitleTextAttributes:titleTextAttributes forState:controlState];
 }
 
 - (void)refreshUIForCurrentPost
@@ -592,8 +593,9 @@ NSString *const WPAbstractPostRestorationKey = @"WPAbstractPostRestorationKey";
 
 - (void)dismissEditView
 {
-    if (self.activityDelegate) {
-		[self.activityDelegate editPostViewDismissed];
+    if (self.onClose) {
+        self.onClose();
+        self.onClose = nil;
 	} else{
 		[self.presentingViewController dismissViewControllerAnimated:YES completion:nil];
 	}

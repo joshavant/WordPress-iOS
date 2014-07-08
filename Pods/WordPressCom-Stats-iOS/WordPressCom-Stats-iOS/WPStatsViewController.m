@@ -2,7 +2,6 @@
 #import "WPStatsButtonCell.h"
 #import "WPStatsCounterCell.h"
 #import "WPStatsNoResultsCell.h"
-#import "WPStatsViewsVisitorsBarGraphCell.h"
 #import "WPStatsSummary.h"
 #import "WPStatsTitleCountItem.h"
 #import "WPStatsTodayYesterdayButtonCell.h"
@@ -13,10 +12,10 @@
 #import "WPNoResultsView.h"
 #import "WPStatsService.h"
 #import "WPStyleGuide.h"
+#import "WPStatsGraphViewController.h"
 
 static NSString *const VisitorsUnitButtonCellReuseIdentifier = @"VisitorsUnitButtonCellReuseIdentifier";
 static NSString *const TodayYesterdayButtonCellReuseIdentifier = @"TodayYesterdayButtonCellReuseIdentifier";
-static NSString *const GraphCellReuseIdentifier = @"GraphCellReuseIdentifier";
 static NSString *const CountCellReuseIdentifier = @"DoubleCountCellReuseIdentifier";
 static NSString *const NoResultsCellIdentifier = @"NoResultsCellIdentifier";
 static NSString *const ResultRowCellIdentifier = @"ResultRowCellIdentifier";
@@ -60,6 +59,7 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
 @property (nonatomic, assign) BOOL resultsAvailable;
 @property (nonatomic, weak) WPNoResultsView *noResultsView;
 @property (nonatomic, strong) NSMutableDictionary *expandedLinkGroups;
+@property (nonatomic, strong) WPStatsGraphViewController *graphViewController;
 
 @end
 
@@ -93,6 +93,8 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
                          @YES, @(StatsSectionReferrers), nil];
         
         _resultsAvailable = NO;
+        _graphViewController = [[WPStatsGraphViewController alloc] init];
+        [self addChildViewController:_graphViewController];
         
         self.restorationIdentifier = NSStringFromClass([self class]);
         self.restorationClass = [self class];
@@ -126,27 +128,17 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
     
     [self.tableView registerClass:[WPStatsButtonCell class] forCellReuseIdentifier:VisitorsUnitButtonCellReuseIdentifier];
     [self.tableView registerClass:[WPStatsTodayYesterdayButtonCell class] forCellReuseIdentifier:TodayYesterdayButtonCellReuseIdentifier];
-    [self.tableView registerClass:[WPStatsViewsVisitorsBarGraphCell class] forCellReuseIdentifier:GraphCellReuseIdentifier];
     [self.tableView registerClass:[WPStatsCounterCell class] forCellReuseIdentifier:CountCellReuseIdentifier];
     [self.tableView registerClass:[WPStatsNoResultsCell class] forCellReuseIdentifier:NoResultsCellIdentifier];
     [self.tableView registerClass:[WPStatsTwoColumnCell class] forCellReuseIdentifier:ResultRowCellIdentifier];
-    [self.tableView registerClass:[WPStatsViewsVisitorsBarGraphCell class] forCellReuseIdentifier:GraphCellIdentifier];
+    [self.tableView registerClass:[UITableViewCell class] forCellReuseIdentifier:GraphCellIdentifier];
     [self.tableView registerClass:[WPStatsLinkToWebviewCell class] forCellReuseIdentifier:LinkToWebviewCellIdentifier];
     
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refreshControlTriggered) forControlEvents:UIControlEventValueChanged];
 
-    [self showNoResultsWithTitle:NSLocalizedString(@"No stats to display", nil) message:nil];
+    [self showNoResultsWithTitle:NSLocalizedString(@"Fetching latest stats", @"Message to display while initially loading stats") message:nil];
     
-    // TODO Show a message when no connection is available (need a modular way to do this)
-    //    WordPressAppDelegate *appDelegate = [WordPressAppDelegate sharedWordPressApplicationDelegate];
-    //    if (!appDelegate.connectionAvailable) {
-    //        [self showNoResultsWithTitle:NSLocalizedString(@"No Connection", @"") message:NSLocalizedString(@"An active internet connection is required to view stats", @"")];
-    //    } else {
-    //        [self initStats];
-    //    }
-
-    // TODO This may not be the right place for this now that it's a component
     [self initStats];
 }
 
@@ -154,7 +146,7 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
 {
     [super didReceiveMemoryWarning];
     
-    _statModels = nil;
+    self.statModels = nil;
 }
 
 - (void)encodeRestorableStateWithCoder:(NSCoder *)coder
@@ -264,7 +256,7 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
                 case VisitorRowGraphUnitButton:
                     return [WPStatsButtonCell heightForRow];
                 case VisitorRowGraph:
-                    return [WPStatsViewsVisitorsBarGraphCell heightForRow];
+                    return 200.0f;
                 case VisitorRowTodayStats:
                 case VisitorRowBestEver:
                 case VisitorRowAllTime:
@@ -312,9 +304,17 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
                 }
                 case VisitorRowGraph:
                 {
-                    WPStatsViewsVisitorsBarGraphCell *cell = [tableView dequeueReusableCellWithIdentifier:GraphCellIdentifier];
-                    [cell setViewsVisitors:_statModels[@(StatsSectionVisitorsGraph)]];
-                    [cell showGraphForUnit:_currentViewsVisitorsGraphUnit];
+                    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:GraphCellIdentifier];
+                    self.graphViewController.viewsVisitors = self.statModels[@(StatsSectionVisitorsGraph)];
+                    self.graphViewController.currentUnit = self.currentViewsVisitorsGraphUnit;
+                    
+                    if (![[cell.contentView subviews] containsObject:self.graphViewController.view]) {
+                        UIView *graphView = self.graphViewController.view;
+                        graphView.frame = cell.contentView.bounds;
+                        graphView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth;
+                        [cell.contentView addSubview:graphView];
+                    }
+                    
                     return cell;
                 }
                 case VisitorRowTodayStats:
@@ -639,8 +639,9 @@ typedef NS_ENUM(NSInteger, TotalFollowersShareRow) {
 #pragma mark - Visitors Graph button selectors
 
 - (void)graphUnitSelected:(WPStatsViewsVisitorsUnit)unit {
-    _currentViewsVisitorsGraphUnit = unit;
-    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:StatsSectionVisitors] withRowAnimation:UITableViewRowAnimationNone];
+    self.currentViewsVisitorsGraphUnit = unit;
+    self.graphViewController.currentUnit = unit;
+    [self.graphViewController.collectionView reloadData];
 }
 
 #pragma mark - StatsButtonCellDelegate methods
