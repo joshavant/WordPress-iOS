@@ -18,36 +18,9 @@ https://github.com/wordpress-mobile/WordPress-iOS/wiki/WordPress-for-iOS-Style-G
 
 http://make.wordpress.org/mobile/handbook/pathways/ios/how-to-contribute/
 
-## Folder Structure
-
-**Derived Sources** - This is where the project outputs the generated `WordPressComApiCredentials.m` file. As a part of the build process the project looks for a file located at `~/.wpcom_app_credentials` and uses the values there to generate `WordPressComApiCredentials.m`.
-
-**WordPressApi** - There are a few files here related to the WordPress API. The primary class is `WordPressApi` which is used to access the varied data that the app needs to function. There is a `gencredentials.rb` file here which is what is used by the build process to generate `WordPressComApiCredentials.m`. Note that the `WordPressComiApCredentials.m` file in this folder will get overridden by the output from `gencredentials.rb`.
-
-**Classes** - The bulk of the app's code lives within this folder in various subdirectories(described below).
-
-**Classes/Categories** - This is where we store all of the app's categories.
-
-**Classes/Models** - This is where all of the app's models live. Some of the models here are Core Data objects, some are just Plain Old Objective-C Object's. 
-
-**Classes/Networking** - We've been moving most of the network code in the app into this folder. There are various classes in this folder which contain most if not all the networking code related to a particular entity within the app(i.e. Account Notifications, Reader).
-
-**Classes/Services** - This folder contains the classes housing the business logic for various entities within the app. The app's views generally interact with these classes and not directly with the classes within the `Classes/Networking` folder.
-
-**Classes/System** - This folder contains two system classes: the app delegate and a constants file.
-
-**Classes/Utility** - We generally put utility classes that are either more cross cutting or don't logically fit anywhere else in this folder. Within this folder is the `Analytics` folder which houses our analytics package for the app.
-
-**Classes/ViewRelated** - Within this folder are a series sub folders for the various parts of the app and within each folder are all the code related view files. There's a general `Cells` and `Views` folder here which contain classes that span more than one section of the app.
-
-**Vendor** - There are a few 3rd party libraries here which when initially added to the app didn't have CocoaPods.
-
-**Other Sources** - There are a few files here dealing with localization of strings as well as the prefix for the project and `main.m`.
-
-**WordPressTest** - Where we put the unit tests and integration tests for the project.
-
 ## Building
 
 Starting with changeset 3633 version 3.2, WordPress for iOS uses Cocoapods (http://cocoapods.org/) to manage third party libraries.  Trying to build the project by itself (WordPress.xcproj) after launching will result in an error, as the resources managed by cocoapods are not included.  Instead, launch the workspace by either double clicking on WordPress.xcworkspace file, or launch Xcode and choose File > Open and browse to WordPress.xcworkspace. 
 
 In order to login to a WordPress.com account, you will need to create an account over at https://developer.wordpress.com. The only account you will be able to login in with is the one affiliated with your developer account. Once you have an account and a corresponding app id and app secret, you will need to setup a ~/.wpcom_app_credentials file as detailed [here](http://make.wordpress.org/mobile/handbook/pathways/ios/tutorials-guides/#3-%c2%a0setup-wpcom_app_credentials). For more details see http://developer.wordpress.com/2014/07/04/authentication-improvements-for-testing-your-apps/.
+
